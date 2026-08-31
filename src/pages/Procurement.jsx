@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { ShoppingBag, FileText, CheckCircle, PlusCircle, Trash, List, Eye, AlertTriangle } from 'lucide-react';
+import { ShoppingBag, FileText, CheckCircle, PlusCircle, Trash, List, Eye, AlertTriangle, Printer } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Procurement() {
@@ -682,12 +682,20 @@ export default function Procurement() {
               <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider">
                 {detailType.toUpperCase()} ITEMS DETAILS
               </h3>
-              <button 
-                onClick={() => setSelectedDetailObject(null)} 
-                className="text-xs font-bold text-brand-navy/50 dark:text-white/50 hover:text-brand-navy dark:hover:text-white uppercase tracking-wider"
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-gold text-brand-dark rounded-xl font-extrabold text-[10px] uppercase tracking-wider hover:bg-white transition-all shadow-sm"
+                >
+                  <Printer size={13} /> Export PDF
+                </button>
+                <button 
+                  onClick={() => setSelectedDetailObject(null)} 
+                  className="text-xs font-bold text-brand-navy/50 dark:text-white/50 hover:text-brand-navy dark:hover:text-white uppercase tracking-wider"
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             <div className="space-y-4 max-h-[300px] overflow-y-auto text-xs pr-1">

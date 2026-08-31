@@ -17,7 +17,8 @@ import {
   HardHat,
   MessageSquarePlus,
   ChevronRight,
-  AlertTriangle
+  AlertTriangle,
+  FileText
 } from 'lucide-react';
 
 export default function ProjectDetail() {
@@ -312,7 +313,41 @@ export default function ProjectDetail() {
             </div>
           )}
 
-          {/* Key Site Features */}
+          {/* Architectural Drawing & Blueprint Viewer Card */}
+          <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm space-y-4 hover:shadow-md transition-all">
+            <div className="flex items-center justify-between border-b border-brand-navy/5 dark:border-white/10 pb-3">
+              <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider">COREN Approved Blueprints & Floorplans</h3>
+              <FileText className="text-brand-gold" size={16} />
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 border border-brand-navy/5 dark:border-white/10 bg-brand-beige/10 dark:bg-brand-dark rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-brand-navy dark:text-white block">Structural Floor Slab Plan (Rev B)</span>
+                  <span className="text-[9px] text-brand-navy/40 dark:text-white/40 block mt-0.5">COREN-2026-ARCH-004 • PDF • 14.2 MB</span>
+                </div>
+                <button
+                  onClick={() => alert('Opening structural blueprint CAD PDF drawing...')}
+                  className="px-3 py-1.5 bg-brand-navy dark:bg-white/10 text-white font-extrabold text-[9px] uppercase tracking-wider rounded-lg hover:bg-brand-gold hover:text-brand-dark transition-all"
+                >
+                  View CAD
+                </button>
+              </div>
+
+              <div className="p-3 border border-brand-navy/5 dark:border-white/10 bg-brand-beige/10 dark:bg-brand-dark rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-brand-navy dark:text-white block">MEP Electrical & Conduit Schematic</span>
+                  <span className="text-[9px] text-brand-navy/40 dark:text-white/40 block mt-0.5">COREN-2026-MEP-012 • PDF • 8.6 MB</span>
+                </div>
+                <button
+                  onClick={() => alert('Opening MEP electrical schematic PDF...')}
+                  className="px-3 py-1.5 bg-brand-navy dark:bg-white/10 text-white font-extrabold text-[9px] uppercase tracking-wider rounded-lg hover:bg-brand-gold hover:text-brand-dark transition-all"
+                >
+                  View CAD
+                </button>
+              </div>
+            </div>
+          </div>
           {project.features && project.features.length > 0 && (
             <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm space-y-4 hover:shadow-md transition-all">
               <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider border-b border-brand-navy/5 dark:border-white/10 pb-3">Key Site Features</h3>
