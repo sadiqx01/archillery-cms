@@ -33,6 +33,28 @@ export default function ProjectDetail() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Gantt Chart Milestones state
+  const [milestones, setMilestones] = useState([
+    { id: 1, name: 'Site Preparation & Excavation', start: '2026-02-15', end: '2026-03-30', progress: 100, status: 'completed' },
+    { id: 2, name: 'Foundation & Raft Slab Casting', start: '2026-04-01', end: '2026-05-15', progress: 100, status: 'completed' },
+    { id: 3, name: 'Skeletal Concrete Frame & Beams', start: '2026-05-16', end: '2026-07-31', progress: 85, status: 'in_progress' },
+    { id: 4, name: 'Exterior Glazed Facade & Masonry', start: '2026-08-01', end: '2026-10-15', progress: 30, status: 'in_progress' },
+    { id: 5, name: 'MEP Electrical & Plumbing Rough-In', start: '2026-10-16', end: '2026-12-15', progress: 0, status: 'pending' },
+    { id: 6, name: 'Interior Joinery & Flooring Finishes', start: '2026-12-16', end: '2027-01-31', progress: 0, status: 'pending' },
+    { id: 7, name: 'Final QC Audit & Client Handover', start: '2027-02-01', end: '2027-02-15', progress: 0, status: 'pending' },
+  ]);
+
+  const handleToggleMilestone = (id) => {
+    setMilestones(prev => prev.map(m => {
+      if (m.id === id) {
+        const nextStatus = m.status === 'completed' ? 'in_progress' : m.status === 'in_progress' ? 'pending' : 'completed';
+        const nextProg = nextStatus === 'completed' ? 100 : nextStatus === 'in_progress' ? 50 : 0;
+        return { ...m, status: nextStatus, progress: nextProg };
+      }
+      return m;
+    }));
+  };
+
   const fetchProjectDetails = async () => {
     try {
       setLoading(true);
@@ -307,8 +329,64 @@ export default function ProjectDetail() {
 
         </div>
 
-        {/* Right Hand Column: Site Progress timeline & update (Lg: col-span-2) */}
+        {/* Right Hand: Progress Timeline Feed & File Uploader (Lg: col-span-2) */}
         <div className="lg:col-span-2 space-y-8">
+
+          {/* Interactive Gantt Chart & Construction Schedule */}
+          <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm space-y-5 hover:shadow-md transition-all">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-navy/5 dark:border-white/10 pb-4">
+              <div>
+                <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider">Project Critical Path & Gantt Schedule</h3>
+                <p className="text-[10px] text-brand-navy/50 dark:text-white/50 font-medium mt-0.5">Click any milestone bar to toggle completion status.</p>
+              </div>
+              <span className="text-[9px] font-extrabold text-brand-gold bg-brand-gold/10 px-3 py-1 rounded-full border border-brand-gold/20 self-start sm:self-auto uppercase tracking-wider">
+                Overall Progress: {Math.round(milestones.reduce((acc, m) => acc + m.progress, 0) / milestones.length)}%
+              </span>
+            </div>
+
+            <div className="space-y-4 pt-2">
+              {milestones.map((m) => (
+                <div 
+                  key={m.id} 
+                  onClick={() => handleToggleMilestone(m.id)}
+                  className="p-3.5 rounded-2xl border border-brand-navy/5 dark:border-white/10 bg-brand-beige/10 dark:bg-brand-dark hover:border-brand-gold/40 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between text-xs mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                        m.status === 'completed' ? 'bg-green-500' :
+                        m.status === 'in_progress' ? 'bg-brand-gold animate-pulse' :
+                        'bg-gray-300 dark:bg-white/20'
+                      }`} />
+                      <span className="font-bold text-brand-navy dark:text-white group-hover:text-brand-gold transition-colors">{m.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[9px] font-mono text-brand-navy/40 dark:text-white/40 hidden sm:inline">{m.start} → {m.end}</span>
+                      <span className={`text-[8px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${
+                        m.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800/40' :
+                        m.status === 'in_progress' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40' :
+                        'bg-gray-50 text-gray-500 border-gray-200 dark:bg-white/5 dark:text-white/40 dark:border-white/10'
+                      }`}>
+                        {m.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Gantt Bar Visualization */}
+                  <div className="w-full bg-brand-navy/5 dark:bg-white/5 rounded-full h-2.5 overflow-hidden flex">
+                    <div 
+                      className={`h-full transition-all duration-500 ${
+                        m.status === 'completed' ? 'bg-green-500' :
+                        m.status === 'in_progress' ? 'bg-gradient-to-r from-brand-gold to-amber-500' :
+                        'bg-gray-300 dark:bg-white/20'
+                      }`}
+                      style={{ width: `${m.progress}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
           
           {/* Timeline Update upload tool (Admin/Supervisor Only) */}
           {user.role !== 'worker' && (
