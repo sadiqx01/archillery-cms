@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { ShoppingBag, FileText, CheckCircle, PlusCircle, Trash, List, Eye, AlertTriangle, Printer } from 'lucide-react';
+import { ShoppingBag, FileText, CheckCircle, PlusCircle, Eye, AlertTriangle, Printer, Clock, Check, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Procurement() {
@@ -15,27 +15,29 @@ export default function Procurement() {
   const [lpos, setLpos] = useState([]);
   const [grns, setGrns] = useState([]);
 
-  // 1. Material Requisition Form states
+  // Short Material Request Form State
   const [reqProjectId, setReqProjectId] = useState('');
-  const [itemsList, setItemsList] = useState([]);
-  const [itemDesc, setItemDesc] = useState('');
-  const [itemQty, setItemQty] = useState('');
-  const [itemUnit, setItemUnit] = useState('');
-  const [itemRate, setItemRate] = useState('');
+  const [reqMaterial, setReqMaterial] = useState('');
+  const [reqQuantity, setReqQuantity] = useState('');
+  const [reqUnit, setReqUnit] = useState('bags');
+  const [reqPurpose, setReqPurpose] = useState('');
   const [submittingReq, setSubmittingReq] = useState(false);
 
-  // 2. Issue LPO states
+  // Review comments mapping
+  const [reviewComments, setReviewComments] = useState({});
+
+  // 2. Issue LPO states (Secondary)
   const [selectedReq, setSelectedReq] = useState(null);
   const [vendorName, setVendorName] = useState('');
   const [submittingLpo, setSubmittingLpo] = useState(false);
 
-  // 3. Log GRN states
+  // 3. Log GRN states (Secondary)
   const [selectedLpo, setSelectedLpo] = useState(null);
   const [deliveryNoteRef, setDeliveryNoteRef] = useState('');
-  const [grnItems, setGrnItems] = useState([]); // Array mirroring LPO items with received quantities
+  const [grnItems, setGrnItems] = useState([]);
   const [submittingGrn, setSubmittingGrn] = useState(false);
 
-  // View details modal
+  // Detail Modal
   const [selectedDetailObject, setSelectedDetailObject] = useState(null);
   const [detailType, setDetailType] = useState('');
 
@@ -59,69 +61,69 @@ export default function Procurement() {
       setGrns(grnRes.data);
     } catch (err) {
       console.error(err);
-      setError('Failed to fetch procurement registers.');
+      setError('Failed to fetch procurement records.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Requisition Form Items List helpers
-  const handleAddItemToReq = () => {
-    if (!itemDesc || !itemQty || !itemRate) return;
-    const newItem = {
-      item_desc: itemDesc,
-      qty: parseFloat(itemQty),
-      unit: itemUnit || 'pcs',
-      est_rate: parseFloat(itemRate)
-    };
-    setItemsList([...itemsList, newItem]);
-    setItemDesc('');
-    setItemQty('');
-    setItemUnit('');
-    setItemRate('');
-  };
-
-  const handleRemoveItemFromReq = (idx) => {
-    setItemsList(itemsList.filter((_, i) => i !== idx));
-  };
-
+  // Submit Short Material Request
   const handleCreateRequisition = async (e) => {
     e.preventDefault();
-    if (!reqProjectId || itemsList.length === 0) {
-      alert('Please select a project site and add at least one material item.');
+    if (!reqProjectId || !reqMaterial || !reqQuantity) {
+      alert('Please fill in project, material name, and quantity.');
       return;
     }
     setSubmittingReq(true);
     try {
-      const estimatedCost = itemsList.reduce((acc, curr) => acc + (curr.qty * curr.est_rate), 0);
       await axios.post('/api/procurement/requisitions', {
         project_id: reqProjectId,
-        item_details: itemsList,
-        estimated_cost: estimatedCost
+        material: reqMaterial,
+        quantity: reqQuantity,
+        unit: reqUnit || 'units',
+        purpose: reqPurpose
       });
-      alert('Material Requisition submitted to matrix!');
+      alert('Material Request submitted successfully!');
       setReqProjectId('');
-      setItemsList([]);
+      setReqMaterial('');
+      setReqQuantity('');
+      setReqUnit('bags');
+      setReqPurpose('');
       fetchProcurementData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to submit requisition');
+      alert(err.response?.data?.message || 'Failed to submit material request');
     } finally {
       setSubmittingReq(false);
     }
   };
 
-  // Approval Matrix handles
-  const handleApproveRequisition = async (reqId, approve) => {
+  // CTO Review (Recommend or Reject)
+  const handleCtoRecommend = async (reqId, recommend) => {
+    const comments = reviewComments[reqId] || '';
     try {
-      await axios.patch(`/api/procurement/requisitions/${reqId}/approve`, { approve });
-      alert(`Requisition ${approve ? 'approved' : 'rejected'} successfully.`);
+      await axios.patch(`/api/procurement/requisitions/${reqId}/recommend`, { recommend, comments });
+      alert(recommend ? 'Material request recommended to CEO.' : 'Material request rejected by CTO.');
+      setReviewComments({ ...reviewComments, [reqId]: '' });
       fetchProcurementData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Action failed');
+      alert('Failed to update recommendation');
     }
   };
 
-  // Issue LPO handles
+  // CEO Review (Approve or Reject)
+  const handleCeoApprove = async (reqId, approve) => {
+    const comments = reviewComments[reqId] || '';
+    try {
+      await axios.patch(`/api/procurement/requisitions/${reqId}/approve`, { approve, comments });
+      alert(approve ? 'Material request approved by CEO.' : 'Material request rejected by CEO.');
+      setReviewComments({ ...reviewComments, [reqId]: '' });
+      fetchProcurementData();
+    } catch (err) {
+      alert('Failed to update approval');
+    }
+  };
+
+  // Secondary: Issue LPO
   const handleIssueLpo = async (e) => {
     e.preventDefault();
     if (!selectedReq || !vendorName) return;
@@ -131,42 +133,29 @@ export default function Procurement() {
         requisition_id: selectedReq.id,
         project_id: selectedReq.project_id,
         vendor_name: vendorName,
-        total_amount: selectedReq.estimated_cost
+        total_amount: selectedReq.estimated_cost || 0
       });
-      alert(`LPO successfully issued to ${vendorName}`);
+      alert(`Purchase Order (LPO) issued to ${vendorName}`);
       setSelectedReq(null);
       setVendorName('');
       fetchProcurementData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to issue LPO');
+      alert('Failed to issue LPO');
     } finally {
       setSubmittingLpo(false);
     }
   };
 
-  // Log GRN handles
+  // Secondary: GRN Delivery
   const handleOpenGrnForm = (lpo) => {
     setSelectedLpo(lpo);
-    // Prepare GRN items with matching ordered quantities
-    const preparedItems = lpo.item_details.map(item => ({
+    const preparedItems = (lpo.item_details || []).map(item => ({
       item_desc: item.item_desc,
       ordered_qty: item.qty,
-      received_qty: item.qty, // default received matches ordered
+      received_qty: item.qty,
       discrep_notes: ''
     }));
     setGrnItems(preparedItems);
-  };
-
-  const handleUpdateGrnItemQty = (idx, val) => {
-    const updated = [...grnItems];
-    updated[idx].received_qty = parseFloat(val) || 0;
-    setGrnItems(updated);
-  };
-
-  const handleUpdateGrnItemNotes = (idx, val) => {
-    const updated = [...grnItems];
-    updated[idx].discrep_notes = val;
-    setGrnItems(updated);
   };
 
   const handleCreateGrn = async (e) => {
@@ -174,574 +163,481 @@ export default function Procurement() {
     if (!selectedLpo) return;
     setSubmittingGrn(true);
     try {
-      // Determine delivery status
-      let hasDiscrepancy = false;
-      let hasReceivedSome = false;
-      grnItems.forEach(item => {
-        if (item.received_qty !== item.ordered_qty) hasDiscrepancy = true;
-        if (item.received_qty > 0) hasReceivedSome = true;
-      });
-
-      let grnStatus = 'fully_received';
-      if (hasDiscrepancy) {
-        grnStatus = hasReceivedSome ? 'partially_received' : 'discrepancy';
-      }
-
       await axios.post('/api/procurement/grns', {
         lpo_id: selectedLpo.id,
         project_id: selectedLpo.project_id,
         delivery_details: grnItems,
         delivery_note_ref: deliveryNoteRef,
-        status: grnStatus
+        status: 'fully_received'
       });
-
-      alert(`GRN logged successfully. Status: ${grnStatus.replace('_', ' ')}`);
+      alert('Delivery (GRN) recorded successfully.');
       setSelectedLpo(null);
       setDeliveryNoteRef('');
-      setGrnItems([]);
       fetchProcurementData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to submit GRN note');
+      alert('Failed to record delivery');
     } finally {
       setSubmittingGrn(false);
     }
   };
 
   const getStatusBadge = (status) => {
-    const base = 'text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border ';
+    const base = 'text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full border ';
     switch (status) {
-      // Requisition statuses
-      case 'pending_approval': return base + 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'approved': return base + 'bg-green-50 text-green-700 border-green-200';
-      case 'rejected': return base + 'bg-red-50 text-red-700 border-red-200';
-      case 'lpo_generated': return base + 'bg-blue-50 text-blue-700 border-blue-200';
-      // LPO statuses
-      case 'issued': return base + 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'delivered': return base + 'bg-green-50 text-green-700 border-green-200';
-      // GRN statuses
-      case 'fully_received': return base + 'bg-green-50 text-green-700 border-green-200';
-      case 'partially_received': return base + 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'discrepancy': return base + 'bg-red-50 text-red-700 border-red-200';
-      default: return base + 'bg-gray-50 text-gray-700 border-gray-200';
+      case 'approved':
+        return base + 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300';
+      case 'cto_recommended':
+        return base + 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300';
+      case 'cto_rejected':
+      case 'rejected':
+        return base + 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300';
+      case 'pending_approval':
+      default:
+        return base + 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300';
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'approved': return 'Approved by CEO';
+      case 'cto_recommended': return 'Recommended by CTO';
+      case 'cto_rejected': return 'Rejected by CTO';
+      case 'rejected': return 'Rejected by CEO';
+      case 'pending_approval':
+      default: return 'Pending Review';
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-navy dark:border-white" />
+      <div className="flex justify-center py-20 flex-col items-center">
+        <div className="w-10 h-10 border-4 border-brand-navy border-t-brand-gold rounded-full animate-spin"></div>
+        <p className="mt-3 text-xs font-bold text-brand-navy/60 dark:text-white/60 uppercase tracking-widest">Loading Requests...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-fadeIn grid-bg min-h-screen pb-16">
-      
-      {/* Header */}
+    <div className="space-y-6 animate-fadeIn pb-16">
+      {/* Page Header */}
       <div>
-        <h2 className="font-outfit font-extrabold text-2xl text-brand-navy dark:text-white uppercase tracking-wider">Procurement & Site Requisitions</h2>
-        <p className="text-xs text-brand-navy/60 dark:text-white/60 font-semibold mt-1">Authorized workflows governing site procurement matrices, from initial material logs to delivery check-offs.</p>
+        <h2 className="font-outfit font-extrabold text-2xl text-brand-navy dark:text-white uppercase tracking-wider">
+          Material Requests & Approvals
+        </h2>
+        <p className="text-xs text-brand-navy/60 dark:text-white/60 font-semibold mt-1">
+          Simple site material request chain: Site Supervisor submits &rarr; CTO recommends &rarr; CEO approves.
+        </p>
       </div>
 
       {/* Tabs */}
       <div className="flex border-b border-brand-navy/5 dark:border-white/5 gap-2 no-print">
-        {['requisitions', 'lpos', 'grns'].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-6 py-3 font-extrabold text-xs uppercase tracking-wider border-b-2 transition-all ${
-              activeTab === tab 
-                ? 'border-brand-gold text-brand-navy dark:text-white' 
-                : 'border-transparent text-brand-navy/40 dark:text-white/40 hover:text-brand-navy/60 dark:hover:text-white/60'
-            }`}
-          >
-            {tab.replace('_', ' ')}
-          </button>
-        ))}
+        <button
+          onClick={() => setActiveTab('requisitions')}
+          className={`px-5 py-2.5 font-extrabold text-xs uppercase tracking-wider border-b-2 transition-all ${
+            activeTab === 'requisitions'
+              ? 'border-brand-gold text-brand-navy dark:text-white'
+              : 'border-transparent text-brand-navy/40 dark:text-white/40 hover:text-brand-navy/60 dark:hover:text-white/60'
+          }`}
+        >
+          Material Requests ({requisitions.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('lpos')}
+          className={`px-5 py-2.5 font-extrabold text-xs uppercase tracking-wider border-b-2 transition-all ${
+            activeTab === 'lpos'
+              ? 'border-brand-gold text-brand-navy dark:text-white'
+              : 'border-transparent text-brand-navy/40 dark:text-white/40 hover:text-brand-navy/60 dark:hover:text-white/60'
+          }`}
+        >
+          Purchase Orders ({lpos.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('grns')}
+          className={`px-5 py-2.5 font-extrabold text-xs uppercase tracking-wider border-b-2 transition-all ${
+            activeTab === 'grns'
+              ? 'border-brand-gold text-brand-navy dark:text-white'
+              : 'border-transparent text-brand-navy/40 dark:text-white/40 hover:text-brand-navy/60 dark:hover:text-white/60'
+          }`}
+        >
+          Deliveries ({grns.length})
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left Column: Form & Actions Desk (col-span-1) */}
-        <div className="lg:col-span-1 space-y-8 no-print">
+      {/* Main Material Requests Tab */}
+      {activeTab === 'requisitions' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           
-          {/* Requisition Submission Form (Only visible to site supervisors, engineers, and field workers) */}
-          {activeTab === 'requisitions' && !selectedReq && ['supervisor', 'engineer', 'worker'].includes(user.role) && (
-            <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm space-y-4 hover:shadow-md transition-all">
-              <div className="flex items-center gap-2 border-b border-brand-navy/5 dark:border-white/10 pb-3">
-                <ShoppingBag className="text-brand-gold" size={18} />
-                <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider">Submit Requisition</h3>
+          {/* Left: Short Request Form (Supervisors, Engineers, IT, or CEO/CTO) */}
+          <div className="lg:col-span-1 bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm space-y-4 hover:shadow-md transition-all no-print">
+            <div className="flex items-center gap-2 border-b border-brand-navy/5 dark:border-white/10 pb-3">
+              <ShoppingBag className="text-brand-gold" size={18} />
+              <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider">
+                New Material Request
+              </h3>
+            </div>
+
+            <form onSubmit={handleCreateRequisition} className="space-y-3.5 text-xs font-semibold">
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-brand-navy/50 dark:text-white/50 block">Project Site</label>
+                <select
+                  value={reqProjectId}
+                  onChange={(e) => setReqProjectId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-navy/10 dark:border-white/10 bg-white dark:bg-brand-dark text-brand-navy dark:text-white text-xs font-bold"
+                  required
+                >
+                  <option value="" disabled>Select project site...</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
               </div>
 
-              <form onSubmit={handleCreateRequisition} className="space-y-4 text-xs font-semibold">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-extrabold uppercase tracking-widest text-brand-navy/50 dark:text-white/50 block ml-1">Select Project</label>
-                  <select
-                    value={reqProjectId}
-                    onChange={(e) => setReqProjectId(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-brand-navy/10 dark:border-white/10 bg-white dark:bg-brand-dark focus:outline-none focus:border-brand-gold font-bold text-brand-navy dark:text-white uppercase tracking-wider"
-                    required
-                  >
-                    <option value="" disabled className="dark:text-white">Select project site...</option>
-                    {projects.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-brand-navy/50 dark:text-white/50 block">Material Description</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Dangote Cement 42.5R"
+                  value={reqMaterial}
+                  onChange={(e) => setReqMaterial(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-brand-navy/10 dark:border-white/10 bg-white dark:bg-brand-dark text-brand-navy dark:text-white text-xs font-medium"
+                  required
+                />
+              </div>
 
-                {/* Add Item fields */}
-                <div className="p-4 border border-brand-navy/5 dark:border-white/10 bg-brand-beige/10 dark:bg-brand-dark rounded-2xl space-y-3.5">
-                  <h4 className="text-[9px] font-extrabold text-brand-navy/40 dark:text-white/40 uppercase tracking-widest">Append Item details</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-brand-navy/50 dark:text-white/50 block">Quantity</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 50"
+                    value={reqQuantity}
+                    onChange={(e) => setReqQuantity(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-brand-navy/10 dark:border-white/10 bg-white dark:bg-brand-dark text-brand-navy dark:text-white text-xs font-medium"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-brand-navy/50 dark:text-white/50 block">Unit</label>
                   <input
                     type="text"
-                    placeholder="Item description (e.g. Dangote Cement 42.5R)"
-                    value={itemDesc}
-                    onChange={(e) => setItemDesc(e.target.value)}
-                    className="w-full px-4 py-2 rounded-xl border border-brand-navy/10 dark:border-white/10 bg-white dark:bg-brand-dark focus:outline-none focus:border-brand-gold font-medium text-brand-navy dark:text-white"
+                    placeholder="e.g. bags, tons, pcs"
+                    value={reqUnit}
+                    onChange={(e) => setReqUnit(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-brand-navy/10 dark:border-white/10 bg-white dark:bg-brand-dark text-brand-navy dark:text-white text-xs font-medium"
+                    required
                   />
-                  <div className="grid grid-cols-3 gap-2">
-                    <input
-                      type="number"
-                      placeholder="Qty"
-                      value={itemQty}
-                      onChange={(e) => setItemQty(e.target.value)}
-                      className="px-4 py-2 rounded-xl border border-brand-navy/10 dark:border-white/10 bg-white dark:bg-brand-dark text-brand-navy dark:text-white focus:outline-none focus:border-brand-gold font-medium"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Unit"
-                      value={itemUnit}
-                      onChange={(e) => setItemUnit(e.target.value)}
-                      className="px-4 py-2 rounded-xl border border-brand-navy/10 dark:border-white/10 bg-white dark:bg-brand-dark text-brand-navy dark:text-white focus:outline-none focus:border-brand-gold font-medium"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Rate (₦)"
-                      value={itemRate}
-                      onChange={(e) => setItemRate(e.target.value)}
-                      className="px-4 py-2 rounded-xl border border-brand-navy/10 dark:border-white/10 bg-white dark:bg-brand-dark text-brand-navy dark:text-white focus:outline-none focus:border-brand-gold font-medium"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAddItemToReq}
-                    className="px-4 py-1.5 bg-brand-gold/15 hover:bg-brand-gold/25 text-brand-navy dark:text-white font-bold rounded-xl transition-all w-full uppercase tracking-wider text-[9px]"
-                  >
-                    Append to Request List
-                  </button>
                 </div>
+              </div>
 
-                {/* Items Queue list */}
-                {itemsList.length > 0 && (
-                  <div className="space-y-2 border-t border-brand-navy/5 dark:border-white/10 pt-3">
-                    <h4 className="text-[9px] font-extrabold text-brand-navy/40 dark:text-white/40 uppercase tracking-widest">Requisition List</h4>
-                    <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
-                      {itemsList.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center bg-brand-beige/20 dark:bg-brand-dark p-2.5 rounded-xl border border-brand-navy/5 dark:border-white/10">
-                          <div>
-                            <span className="font-bold text-brand-navy dark:text-white block">{item.item_desc}</span>
-                            <span className="text-[9px] text-brand-navy/55 dark:text-white/50">{item.qty} {item.unit} @ ₦{item.est_rate}/ea</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItemFromReq(idx)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash size={14} />
-                          </button>
-                        </div>
-                      ))}
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-brand-navy/50 dark:text-white/50 block">Purpose / Usage</label>
+                <textarea
+                  rows="2"
+                  placeholder="e.g. Foundation slab casting for Sector B"
+                  value={reqPurpose}
+                  onChange={(e) => setReqPurpose(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-brand-navy/10 dark:border-white/10 bg-white dark:bg-brand-dark text-brand-navy dark:text-white text-xs font-medium resize-none"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submittingReq}
+                className="w-full py-2.5 bg-brand-gold text-brand-dark hover:bg-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
+              >
+                {submittingReq ? 'Submitting...' : 'Submit Material Request'}
+              </button>
+            </form>
+          </div>
+
+          {/* Right: Material Requests List */}
+          <div className="lg:col-span-2 bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm hover:shadow-md transition-all space-y-4">
+            <div className="flex justify-between items-center border-b border-brand-navy/5 dark:border-white/10 pb-3">
+              <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider">
+                Submitted Requests & Approvals
+              </h3>
+              <span className="text-[10px] text-brand-navy/40 dark:text-white/40 font-bold uppercase">
+                {requisitions.length} Total
+              </span>
+            </div>
+
+            {requisitions.length === 0 ? (
+              <div className="text-center py-12 text-xs text-brand-navy/40 dark:text-white/40 font-bold uppercase tracking-wider">
+                No material requests submitted yet.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {requisitions.map(r => (
+                  <div key={r.id} className="p-4 border border-brand-navy/5 dark:border-white/10 rounded-2xl bg-brand-beige/10 dark:bg-brand-dark/40 space-y-3 hover:border-brand-gold/30 transition-all">
+                    
+                    {/* Top Row: ID, Project, Status Badge */}
+                    <div className="flex flex-wrap justify-between items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono font-extrabold text-brand-gold bg-brand-gold/10 px-2 py-0.5 rounded">
+                          #REQ-{r.id}
+                        </span>
+                        <span className="font-bold text-brand-navy dark:text-white text-xs">
+                          {r.project_name}
+                        </span>
+                      </div>
+                      <span className={getStatusBadge(r.status)}>
+                        {getStatusLabel(r.status)}
+                      </span>
                     </div>
-                  </div>
-                )}
 
-                <button
-                  type="submit"
-                  disabled={submittingReq || itemsList.length === 0}
-                  className="w-full py-2.5 bg-brand-navy hover:bg-brand-navy-light text-white font-extrabold text-xs uppercase tracking-widest rounded-xl transition-all shadow-md"
-                >
-                  {submittingReq ? 'Submitting...' : 'Submit Requisition'}
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* Issue LPO panel (Appears when a requisition is selected) */}
-          {activeTab === 'requisitions' && selectedReq && (
-            <div className="bg-[#001026] text-white border border-white/5 rounded-[28px] p-6 shadow-sm space-y-4 hover:shadow-md transition-all relative overflow-hidden animate-fadeIn">
-              <div className="absolute inset-0 grid-bg opacity-10 pointer-events-none" />
-              <div className="flex items-center justify-between border-b border-white/10 pb-3 relative z-10">
-                <h3 className="font-outfit font-extrabold text-sm text-brand-gold uppercase tracking-wider">Issue LPO Matrix</h3>
-                <button onClick={() => setSelectedReq(null)} className="text-[9px] font-bold text-white/50 hover:text-white uppercase tracking-widest">Cancel</button>
-              </div>
-
-              <div className="space-y-4 text-xs font-semibold relative z-10">
-                <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
-                  <span className="text-[8px] text-brand-gold font-extrabold uppercase block tracking-wider">REQUISITION ID: #{selectedReq.id}</span>
-                  <span className="font-bold text-white block mt-1">{selectedReq.project_name}</span>
-                  <span className="text-[10px] text-white/60 font-medium block">Valuation: ₦{selectedReq.estimated_cost.toLocaleString()}</span>
-                </div>
-
-                <form onSubmit={handleIssueLpo} className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-extrabold uppercase tracking-widest text-white/50 block ml-1">Supplier Vendor Name</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Dangote Industries Ltd"
-                      value={vendorName}
-                      onChange={(e) => setVendorName(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:border-brand-gold font-medium"
-                      required
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={submittingLpo}
-                    className="w-full py-2.5 bg-brand-gold text-brand-dark hover:bg-white font-extrabold text-xs uppercase tracking-widest rounded-xl transition-all shadow-md"
-                  >
-                    {submittingLpo ? 'Generating...' : 'Release LPO'}
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* Log Goods Received Note (GRN) Form */}
-          {activeTab === 'lpos' && selectedLpo && (
-            <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm space-y-4 hover:shadow-md transition-all animate-fadeIn">
-              <div className="flex items-center justify-between border-b border-brand-navy/5 dark:border-white/10 pb-3">
-                <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider">Log Goods Received Note</h3>
-                <button onClick={() => setSelectedLpo(null)} className="text-[9px] font-bold text-brand-navy/50 dark:text-white/50 hover:text-brand-navy dark:hover:text-white uppercase tracking-widest">Cancel</button>
-              </div>
-
-              <form onSubmit={handleCreateGrn} className="space-y-4 text-xs font-semibold">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-extrabold uppercase tracking-widest text-brand-navy/50 dark:text-white/50 block ml-1">LPO Number Reference</label>
-                  <input
-                    type="text"
-                    value={selectedLpo.lpo_number}
-                    className="w-full px-4 py-2.5 rounded-xl border border-brand-navy/5 dark:border-white/10 bg-brand-beige/20 dark:bg-brand-dark text-brand-navy dark:text-white font-bold block"
-                    disabled
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[9px] font-extrabold uppercase tracking-widest text-brand-navy/50 dark:text-white/50 block ml-1">Delivery note / Waybill ref</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. DN-2026-DAN"
-                    value={deliveryNoteRef}
-                    onChange={(e) => setDeliveryNoteRef(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-brand-navy/10 dark:border-white/10 bg-white dark:bg-brand-dark text-brand-navy dark:text-white focus:outline-none focus:border-brand-gold font-medium"
-                    required
-                  />
-                </div>
-
-                {/* Audit delivered vs ordered quantity inputs */}
-                <div className="space-y-3.5 border-t border-brand-navy/5 dark:border-white/10 pt-3">
-                  <h4 className="text-[9px] font-extrabold text-brand-navy/40 dark:text-white/40 uppercase tracking-widest mb-1.5">Delivered Qty Check-off</h4>
-                  <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
-                    {grnItems.map((item, idx) => (
-                      <div key={idx} className="p-3 border border-brand-navy/5 dark:border-white/10 bg-brand-beige/10 dark:bg-brand-dark rounded-2xl space-y-2">
-                        <span className="font-bold text-brand-navy dark:text-white block">{item.item_desc}</span>
-                        <div className="flex justify-between items-center text-[10px] text-brand-navy/50 dark:text-white/50 border-b border-brand-navy/5 dark:border-white/10 pb-1">
-                          <span>Ordered Qty:</span>
-                          <span className="font-bold">{item.ordered_qty}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 pt-1 items-center">
-                          <div className="space-y-1">
-                            <label className="text-[8px] font-extrabold text-brand-navy/40 dark:text-white/40 uppercase">Received Qty</label>
-                            <input
-                              type="number"
-                              value={item.received_qty}
-                              onChange={(e) => handleUpdateGrnItemQty(idx, e.target.value)}
-                              className="w-full px-2.5 py-1.5 rounded border border-brand-navy/10 dark:border-white/10 bg-white dark:bg-brand-dark text-brand-navy dark:text-white text-xs font-bold"
-                              required
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[8px] font-extrabold text-brand-navy/40 dark:text-white/40 uppercase">Leakage notes</label>
-                            <input
-                              type="text"
-                              placeholder="e.g. Missing 5 items"
-                              value={item.discrep_notes}
-                              onChange={(e) => handleUpdateGrnItemNotes(idx, e.target.value)}
-                              className="w-full px-2.5 py-1.5 rounded border border-brand-navy/10 dark:border-white/10 bg-white dark:bg-brand-dark text-brand-navy dark:text-white text-xs font-medium"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submittingGrn}
-                  className="w-full py-2.5 bg-brand-navy hover:bg-brand-navy-light text-white font-extrabold text-xs uppercase tracking-widest rounded-xl transition-all shadow-md"
-                >
-                  {submittingGrn ? 'Logging Delivery...' : 'Log Delivery (GRN)'}
-                </button>
-              </form>
-            </div>
-          )}
-
-        </div>
-
-        {/* Right Column: Registers Ledger Lists */}
-        <div className={`space-y-4 ${['supervisor', 'engineer', 'worker'].includes(user.role) ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
-          
-          {/* Requisitions tab listing */}
-          {activeTab === 'requisitions' && (
-            <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm hover:shadow-md transition-all space-y-4">
-              <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider border-b border-brand-navy/5 dark:border-white/10 pb-3">Material Requisitions Matrix</h3>
-              
-              {requisitions.length === 0 ? (
-                <p className="text-center py-16 text-xs text-brand-navy/40 dark:text-white/40 font-bold uppercase tracking-wider">No requisitions registered.</p>
-              ) : (
-                <div className="space-y-3.5">
-                  {requisitions.map(r => (
-                    <div key={r.id} className="p-4 border border-brand-navy/5 dark:border-white/10 rounded-2xl bg-white dark:bg-brand-surface space-y-3 hover:border-brand-gold transition-colors">
+                    {/* Material & Details */}
+                    <div className="text-xs space-y-1 bg-white dark:bg-brand-surface p-3 rounded-xl border border-brand-navy/5 dark:border-white/5">
                       <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-extrabold text-brand-gold uppercase">#MR-00{r.id}</span>
-                          <span className={getStatusBadge(r.status)}>{r.status.replace('_', ' ')}</span>
-                        </div>
-                        <span className="text-[10px] font-extrabold text-brand-navy/60 dark:text-white/60">₦{r.estimated_cost.toLocaleString()}</span>
+                        <span className="font-extrabold text-sm text-brand-navy dark:text-white">
+                          {r.material || r.item_details?.[0]?.item_desc || 'Construction Material'}
+                        </span>
+                        <span className="font-bold text-brand-gold text-xs">
+                          {r.quantity || r.item_details?.[0]?.qty || 1} {r.unit || r.item_details?.[0]?.unit || 'units'}
+                        </span>
                       </div>
 
-                      <div className="text-xs">
-                        <span className="font-bold text-brand-navy dark:text-white block uppercase">{r.project_name}</span>
-                        <div className="flex flex-wrap items-center gap-x-4 text-[9px] text-brand-navy/40 dark:text-white/40 font-extrabold uppercase pt-0.5">
-                          <span>Requested: {r.requested_by_name}</span>
-                          <span>Approved: {r.approved_by_name}</span>
-                          <span>Date: {new Date(r.created_at).toLocaleDateString()}</span>
-                        </div>
-                      </div>
+                      {r.purpose && (
+                        <p className="text-brand-navy/70 dark:text-white/70 text-xs pt-1">
+                          <strong className="text-[9px] uppercase tracking-wider text-brand-navy/40 dark:text-white/40 block">Purpose:</strong>
+                          {r.purpose}
+                        </p>
+                      )}
 
-                      {/* Items details toggle details */}
-                      <div className="border-t border-brand-navy/5 dark:border-white/10 pt-2 flex justify-between items-center text-[10px] text-brand-navy/50 dark:text-white/50 font-bold">
-                        <span>{r.item_details.length} material items logged</span>
-                        <button
-                          onClick={() => { setSelectedDetailObject(r); setDetailType('requisition'); }}
-                          className="flex items-center gap-1 text-brand-gold hover:text-brand-navy dark:hover:text-white"
-                        >
-                          <Eye size={12} /> View Items Details
-                        </button>
+                      <div className="flex flex-wrap gap-x-4 text-[9px] text-brand-navy/40 dark:text-white/40 font-bold uppercase pt-1 border-t border-brand-navy/5 dark:border-white/5 mt-1">
+                        <span>Requested By: {r.requested_by_name}</span>
+                        <span>Date: {new Date(r.created_at).toLocaleDateString()}</span>
                       </div>
+                    </div>
 
-                      {/* Supervisor Actions */}
-                      {user.role !== 'worker' && r.status === 'pending_approval' && (
-                        <div className="flex gap-2 pt-2 border-t border-brand-navy/5 dark:border-white/10 justify-end">
+                    {/* Remarks Section */}
+                    {(r.cto_comments || r.ceo_comments) && (
+                      <div className="p-3 rounded-xl bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/5 text-xs space-y-1.5">
+                        {r.cto_comments && (
+                          <div className="text-xs">
+                            <span className="text-[9px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider block">CTO Remarks:</span>
+                            <span className="text-brand-navy/80 dark:text-white/80">{r.cto_comments}</span>
+                          </div>
+                        )}
+                        {r.ceo_comments && (
+                          <div className="text-xs pt-1 border-t border-brand-navy/5 dark:border-white/5">
+                            <span className="text-[9px] font-extrabold text-green-600 dark:text-green-400 uppercase tracking-wider block">CEO Remarks:</span>
+                            <span className="text-brand-navy/80 dark:text-white/80">{r.ceo_comments}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* CTO Review Action Box */}
+                    {user.role === 'cto' && r.status === 'pending_approval' && (
+                      <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/40 space-y-2">
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-blue-700 dark:text-blue-300 block">
+                          CTO Review & Recommendation
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="CTO remarks (e.g. Checked against structural specifications)..."
+                          value={reviewComments[r.id] || ''}
+                          onChange={(e) => setReviewComments({ ...reviewComments, [r.id]: e.target.value })}
+                          className="w-full px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-900 bg-white dark:bg-brand-dark text-xs text-brand-navy dark:text-white"
+                        />
+                        <div className="flex gap-2 justify-end">
                           <button
-                            onClick={() => handleApproveRequisition(r.id, false)}
-                            className="px-3.5 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 text-[9px] font-extrabold uppercase rounded-lg transition-all"
+                            onClick={() => handleCtoRecommend(r.id, false)}
+                            className="px-3.5 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 text-[10px] font-extrabold uppercase rounded-lg cursor-pointer"
                           >
                             Reject
                           </button>
                           <button
-                            onClick={() => handleApproveRequisition(r.id, true)}
-                            className="px-3.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-[9px] font-extrabold uppercase rounded-lg transition-all shadow-sm"
+                            onClick={() => handleCtoRecommend(r.id, true)}
+                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-extrabold uppercase rounded-lg shadow-sm cursor-pointer"
                           >
-                            Approve Requisition
+                            Recommend to CEO
                           </button>
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {/* CFO/Admin Actions - Generate LPO */}
-                      {user.role === 'admin' && r.status === 'approved' && (
-                        <div className="flex pt-2 border-t border-brand-navy/5 dark:border-white/10 justify-end">
+                    {/* CEO Approval Action Box */}
+                    {user.role === 'ceo' && (r.status === 'cto_recommended' || r.status === 'pending_approval') && (
+                      <div className="p-3 rounded-xl bg-green-50/50 dark:bg-green-950/20 border border-green-200/60 dark:border-green-800/40 space-y-2">
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-green-700 dark:text-green-300 block">
+                          CEO Final Authorization
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="CEO approval remarks (e.g. Approved within site budget)..."
+                          value={reviewComments[r.id] || ''}
+                          onChange={(e) => setReviewComments({ ...reviewComments, [r.id]: e.target.value })}
+                          className="w-full px-3 py-1.5 rounded-lg border border-green-200 dark:border-green-900 bg-white dark:bg-brand-dark text-xs text-brand-navy dark:text-white"
+                        />
+                        <div className="flex gap-2 justify-end">
                           <button
-                            onClick={() => setSelectedReq(r)}
-                            className="px-4 py-1.5 bg-brand-navy hover:bg-brand-navy-light text-white text-[9px] font-extrabold uppercase rounded-lg transition-all shadow-sm flex items-center gap-1"
+                            onClick={() => handleCeoApprove(r.id, false)}
+                            className="px-3.5 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 text-[10px] font-extrabold uppercase rounded-lg cursor-pointer"
                           >
-                            <PlusCircle size={12} /> Generate LPO
+                            Reject
+                          </button>
+                          <button
+                            onClick={() => handleCeoApprove(r.id, true)}
+                            className="px-3.5 py-1.5 bg-green-600 hover:bg-green-700 text-white text-[10px] font-extrabold uppercase rounded-lg shadow-sm cursor-pointer"
+                          >
+                            Approve Request
                           </button>
                         </div>
-                      )}
-
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* LPO Tab Listing */}
-          {activeTab === 'lpos' && (
-            <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm hover:shadow-md transition-all space-y-4">
-              <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider border-b border-brand-navy/5 dark:border-white/10 pb-3">Local Purchase Orders Ledger</h3>
-              
-              {lpos.length === 0 ? (
-                <p className="text-center py-16 text-xs text-brand-navy/40 dark:text-white/40 font-bold uppercase tracking-wider">No LPOs generated.</p>
-              ) : (
-                <div className="space-y-3.5">
-                  {lpos.map(l => (
-                    <div key={l.id} className="p-4 border border-brand-navy/5 dark:border-white/10 rounded-2xl bg-white dark:bg-brand-surface space-y-3 hover:border-brand-gold transition-colors">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-extrabold text-brand-gold uppercase">{l.lpo_number}</span>
-                          <span className={getStatusBadge(l.status)}>{l.status}</span>
-                        </div>
-                        <span className="text-xs font-bold text-brand-navy dark:text-white">₦{l.total_amount.toLocaleString()}</span>
                       </div>
+                    )}
 
-                      <div className="text-xs">
-                        <span className="font-bold text-brand-navy dark:text-white block uppercase">{l.project_name}</span>
-                        <div className="flex flex-wrap items-center gap-x-4 text-[9px] text-brand-navy/40 dark:text-white/40 font-extrabold uppercase pt-0.5">
-                          <span>Vendor: {l.vendor_name}</span>
-                          <span>Issued by: {l.created_by_name}</span>
-                          <span>Date: {new Date(l.created_at).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-
-                      <div className="border-t border-brand-navy/5 dark:border-white/10 pt-2 flex justify-between items-center text-[10px] text-brand-navy/50 dark:text-white/50 font-bold">
-                        <span>Items linked from Requisition #{l.requisition_id}</span>
+                    {/* Approved Actions (Export PDF) */}
+                    {r.status === 'approved' && (
+                      <div className="flex justify-end pt-1">
                         <button
-                          onClick={() => { setSelectedDetailObject(l); setDetailType('lpo'); }}
-                          className="flex items-center gap-1 text-brand-gold hover:text-brand-navy dark:hover:text-white"
+                          onClick={() => { setSelectedDetailObject(r); setDetailType('requisition'); }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-extrabold uppercase rounded-lg bg-brand-gold/15 text-brand-navy dark:text-white hover:bg-brand-gold/25 cursor-pointer"
                         >
-                          <Eye size={12} /> View LPO Items
+                          <Printer size={12} /> Print Approved Form
                         </button>
                       </div>
+                    )}
 
-                      {/* Log Goods received note */}
-                      {l.status === 'issued' && (
-                        <div className="flex pt-2 border-t border-brand-navy/5 dark:border-white/10 justify-end">
-                          <button
-                            onClick={() => handleOpenGrnForm(l)}
-                            className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-[9px] font-extrabold uppercase rounded-lg transition-all shadow-sm"
-                          >
-                            Log Goods Received (GRN)
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* GRN Tab Listing */}
-          {activeTab === 'grns' && (
-            <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm hover:shadow-md transition-all space-y-4">
-              <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider border-b border-brand-navy/5 dark:border-white/10 pb-3">Goods Received Notes (GRN) Registry</h3>
-              
-              {grns.length === 0 ? (
-                <p className="text-center py-16 text-xs text-brand-navy/40 dark:text-white/40 font-bold uppercase tracking-wider">No GRN logs logged.</p>
-              ) : (
-                <div className="space-y-3.5">
-                  {grns.map(g => (
-                    <div key={g.id} className="p-4 border border-brand-navy/5 dark:border-white/10 rounded-2xl bg-white dark:bg-brand-surface space-y-3 hover:border-brand-gold transition-colors">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-extrabold text-brand-gold uppercase">GRN-00{g.id}</span>
-                          <span className={getStatusBadge(g.status)}>{g.status.replace('_', ' ')}</span>
-                        </div>
-                        <span className="text-[9px] text-brand-navy/50 dark:text-white/50 font-extrabold uppercase">LPO REF: {g.lpo_number}</span>
-                      </div>
-
-                      <div className="text-xs">
-                        <span className="font-bold text-brand-navy dark:text-white block uppercase">{g.project_name}</span>
-                        <div className="flex flex-wrap items-center gap-x-4 text-[9px] text-brand-navy/40 dark:text-white/40 font-extrabold uppercase pt-0.5">
-                          <span>Vendor: {g.vendor_name}</span>
-                          <span>Received by: {g.received_by_name}</span>
-                          <span>Waybill Ref: {g.delivery_note_ref}</span>
-                          <span>Date: {new Date(g.created_at).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-
-                      <div className="border-t border-brand-navy/5 dark:border-white/10 pt-2 flex justify-between items-center text-[10px] text-brand-navy/50 dark:text-white/50 font-bold">
-                        <span>Delivered item discrepancies audited</span>
-                        <button
-                          onClick={() => { setSelectedDetailObject(g); setDetailType('grn'); }}
-                          className="flex items-center gap-1 text-brand-gold hover:text-brand-navy dark:hover:text-white"
-                        >
-                          <Eye size={12} /> Audit Quantities
-                        </button>
-                      </div>
-
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
         </div>
+      )}
 
-      </div>
+      {/* Secondary: Purchase Orders (LPO) Tab */}
+      {activeTab === 'lpos' && (
+        <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm space-y-4">
+          <div className="flex justify-between items-center border-b border-brand-navy/5 dark:border-white/10 pb-3">
+            <div>
+              <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider">
+                Local Purchase Orders (LPO)
+              </h3>
+              <p className="text-[10px] text-brand-navy/50 dark:text-white/50 font-medium">
+                Official procurement orders issued to external construction vendors.
+              </p>
+            </div>
+            <span className="text-[10px] text-brand-navy/40 dark:text-white/40 font-bold uppercase">{lpos.length} Orders</span>
+          </div>
 
-      {/* Details Viewer Modal popup */}
+          {lpos.length === 0 ? (
+            <p className="text-center py-12 text-xs text-brand-navy/40 dark:text-white/40 font-bold uppercase tracking-wider">No purchase orders issued yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {lpos.map(l => (
+                <div key={l.id} className="p-4 border border-brand-navy/5 dark:border-white/10 rounded-2xl bg-brand-beige/10 dark:bg-brand-dark/40 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono font-bold text-brand-gold">{l.lpo_number}</span>
+                      <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">{l.status}</span>
+                    </div>
+                    <span className="font-bold text-brand-navy dark:text-white text-xs block mt-1">Vendor: {l.vendor_name}</span>
+                    <span className="text-[9px] text-brand-navy/40 dark:text-white/40">Issued: {new Date(l.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-black text-brand-navy dark:text-white">₦{Number(l.total_amount || 0).toLocaleString()}</span>
+                    <button
+                      onClick={() => { setSelectedDetailObject(l); setDetailType('lpo'); }}
+                      className="px-3 py-1.5 bg-brand-navy dark:bg-white/10 text-white rounded-lg text-[10px] font-bold uppercase hover:bg-brand-gold hover:text-brand-dark cursor-pointer"
+                    >
+                      View Order
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Secondary: Deliveries (GRN) Tab */}
+      {activeTab === 'grns' && (
+        <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm space-y-4">
+          <div className="flex justify-between items-center border-b border-brand-navy/5 dark:border-white/10 pb-3">
+            <div>
+              <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider">
+                Goods Received Notes (GRN)
+              </h3>
+              <p className="text-[10px] text-brand-navy/50 dark:text-white/50 font-medium">
+                Audited deliveries verified at the site entrance gate.
+              </p>
+            </div>
+            <span className="text-[10px] text-brand-navy/40 dark:text-white/40 font-bold uppercase">{grns.length} Deliveries</span>
+          </div>
+
+          {grns.length === 0 ? (
+            <p className="text-center py-12 text-xs text-brand-navy/40 dark:text-white/40 font-bold uppercase tracking-wider">No site deliveries logged yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {grns.map(g => (
+                <div key={g.id} className="p-4 border border-brand-navy/5 dark:border-white/10 rounded-2xl bg-brand-beige/10 dark:bg-brand-dark/40 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                  <div>
+                    <span className="text-[10px] font-mono font-bold text-brand-gold">Delivery Ref: {g.delivery_note_ref}</span>
+                    <span className="font-bold text-brand-navy dark:text-white text-xs block mt-1">Received by: {g.received_by_name}</span>
+                    <span className="text-[9px] text-brand-navy/40 dark:text-white/40">Logged: {new Date(g.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <button
+                    onClick={() => { setSelectedDetailObject(g); setDetailType('grn'); }}
+                    className="px-3 py-1.5 bg-brand-navy dark:bg-white/10 text-white rounded-lg text-[10px] font-bold uppercase hover:bg-brand-gold hover:text-brand-dark cursor-pointer self-start sm:self-auto"
+                  >
+                    Audit Details
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Details Viewer & Print Modal */}
       {selectedDetailObject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-dark/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 w-full max-w-lg rounded-[28px] p-6 shadow-xl space-y-5 animate-scaleUp">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-dark/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-brand-surface border border-brand-navy/10 dark:border-white/10 w-full max-w-lg rounded-[28px] p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-brand-navy/5 dark:border-white/10 pb-3">
               <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider">
-                {detailType.toUpperCase()} ITEMS DETAILS
+                {detailType.toUpperCase()} Record
               </h3>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-gold text-brand-dark rounded-xl font-extrabold text-[10px] uppercase tracking-wider hover:bg-white transition-all shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-gold text-brand-dark rounded-xl font-extrabold text-[10px] uppercase tracking-wider hover:bg-white transition-all shadow-sm cursor-pointer"
                 >
                   <Printer size={13} /> Export PDF
                 </button>
                 <button 
                   onClick={() => setSelectedDetailObject(null)} 
-                  className="text-xs font-bold text-brand-navy/50 dark:text-white/50 hover:text-brand-navy dark:hover:text-white uppercase tracking-wider"
+                  className="text-xs font-bold text-brand-navy/50 dark:text-white/50 hover:text-brand-navy dark:hover:text-white uppercase tracking-wider cursor-pointer ml-2"
                 >
                   Close
                 </button>
               </div>
             </div>
 
-            <div className="space-y-4 max-h-[300px] overflow-y-auto text-xs pr-1">
-              
-              {/* Requisition or LPO rendering */}
-              {(detailType === 'requisition' || detailType === 'lpo') && (
-                <div className="space-y-2.5">
-                  {selectedDetailObject.item_details.map((item, idx) => (
-                    <div key={idx} className="p-3 border border-brand-navy/5 dark:border-white/10 bg-brand-beige/10 dark:bg-brand-dark rounded-xl flex justify-between items-center">
-                      <div>
-                        <span className="font-bold text-brand-navy dark:text-white block">{item.item_desc}</span>
-                        <span className="text-[10px] text-brand-navy/50 dark:text-white/50 font-bold">Estimated Cost: ₦{item.est_rate}/ea</span>
-                      </div>
-                      <span className="font-bold text-brand-navy dark:text-white">{item.qty} {item.unit}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div className="space-y-3 max-h-[300px] overflow-y-auto text-xs pr-1">
+              <div className="p-3 bg-brand-beige/20 dark:bg-brand-dark rounded-xl space-y-1">
+                <span className="font-bold text-brand-navy dark:text-white block">Project: {selectedDetailObject.project_name || 'Site Project'}</span>
+                <span className="text-[10px] text-brand-navy/50 dark:text-white/50 block">Status: {getStatusLabel(selectedDetailObject.status)}</span>
+                {selectedDetailObject.purpose && (
+                  <span className="text-[10px] text-brand-navy/70 dark:text-white/70 block">Purpose: {selectedDetailObject.purpose}</span>
+                )}
+              </div>
 
-              {/* GRN rendering */}
-              {detailType === 'grn' && (
-                <div className="space-y-3">
-                  {selectedDetailObject.delivery_details.map((item, idx) => {
-                    const diff = item.received_qty - item.ordered_qty;
-                    return (
-                      <div key={idx} className="p-3 border border-brand-navy/5 dark:border-white/10 bg-brand-beige/10 dark:bg-brand-dark rounded-xl space-y-1.5">
-                        <span className="font-bold text-brand-navy dark:text-white block">{item.item_desc}</span>
-                        <div className="flex justify-between text-[10px] text-brand-navy/50 dark:text-white/50">
-                          <span>Ordered Qty: <strong className="text-brand-navy dark:text-white">{item.ordered_qty}</strong></span>
-                          <span>Received Qty: <strong className="text-brand-navy dark:text-white">{item.received_qty}</strong></span>
-                        </div>
-                        {diff !== 0 && (
-                          <div className="p-2 border border-red-200 bg-red-50/50 rounded flex items-start gap-1.5 text-[10px] text-red-700 mt-1">
-                            <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                            <div>
-                              <span className="font-extrabold uppercase block text-[8px]">Procurement Discrepancy logged:</span>
-                              <p className="font-semibold">{diff > 0 ? `Surplus of +${diff}` : `Shortage of ${diff}`} items. {item.discrep_notes || 'No leakage description notes supplied.'}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+              {/* Items */}
+              {(selectedDetailObject.item_details || []).map((item, idx) => (
+                <div key={idx} className="p-3 border border-brand-navy/5 dark:border-white/10 bg-brand-beige/10 dark:bg-brand-dark rounded-xl flex justify-between items-center">
+                  <div>
+                    <span className="font-bold text-brand-navy dark:text-white block">{item.item_desc}</span>
+                    <span className="text-[10px] text-brand-navy/50 dark:text-white/50 font-bold">{item.qty} {item.unit}</span>
+                  </div>
+                  {item.est_rate > 0 && (
+                    <span className="font-bold text-brand-navy dark:text-white">₦{item.est_rate}/ea</span>
+                  )}
                 </div>
-              )}
-
+              ))}
             </div>
           </div>
         </div>

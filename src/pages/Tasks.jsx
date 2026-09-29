@@ -179,10 +179,10 @@ export default function Tasks() {
         /* Kanban Columns Grid */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           
-          {/* Column 1: Pending */}
+          {/* Column 1: To Do */}
           <div className="bg-brand-beige dark:bg-brand-dark border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-5 shadow-sm space-y-4 min-h-[50vh]">
             <div className="flex items-center justify-between border-b border-brand-navy/5 dark:border-white/10 pb-3">
-              <span className="text-xs font-extrabold text-brand-navy dark:text-white uppercase tracking-wider">Pending Assignment</span>
+              <span className="text-xs font-extrabold text-brand-navy dark:text-white uppercase tracking-wider">To Do</span>
               <span className="text-[10px] font-bold bg-gray-200 dark:bg-white/10 text-brand-navy dark:text-white px-2 py-0.5 rounded-full">
                 {getTasksByStatus('pending').length}
               </span>
@@ -211,15 +211,14 @@ export default function Tasks() {
                     <div className="flex justify-between items-center pt-3 border-t border-brand-navy/5 dark:border-white/10 mt-3 no-print">
                       <button
                         onClick={() => handleAdvanceStatus(task.id, task.status)}
-                        className="text-[9px] font-extrabold text-brand-navy dark:text-white uppercase tracking-wider flex items-center gap-1 hover:text-brand-gold"
+                        className="text-[10px] font-extrabold text-brand-navy dark:text-white uppercase tracking-wider flex items-center gap-1 hover:text-brand-gold cursor-pointer"
                       >
-                        Start Task
-                        <ChevronRight size={13} />
+                        Start Task &rarr;
                       </button>
                       {(isAdmin || isSupervisor) && (
                         <button
                           onClick={() => handleDeleteTask(task.id)}
-                          className="text-red-400 hover:text-red-600 p-1"
+                          className="text-red-400 hover:text-red-600 p-1 cursor-pointer"
                         >
                           <Trash2 size={12} />
                         </button>
@@ -229,7 +228,7 @@ export default function Tasks() {
                 </div>
               ))}
               {getTasksByStatus('pending').length === 0 && (
-                <p className="text-center py-10 text-xs text-brand-navy/30 dark:text-white/30 font-bold uppercase">No pending tasks</p>
+                <p className="text-center py-10 text-xs text-brand-navy/30 dark:text-white/30 font-bold uppercase">No tasks to do</p>
               )}
             </div>
           </div>
@@ -237,7 +236,7 @@ export default function Tasks() {
           {/* Column 2: In Progress */}
           <div className="bg-brand-beige dark:bg-brand-dark border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-5 shadow-sm space-y-4 min-h-[50vh]">
             <div className="flex items-center justify-between border-b border-brand-navy/5 dark:border-white/10 pb-3">
-              <span className="text-xs font-extrabold text-brand-navy dark:text-white uppercase tracking-wider">Active In Progress</span>
+              <span className="text-xs font-extrabold text-brand-navy dark:text-white uppercase tracking-wider">In Progress</span>
               <span className="text-[10px] font-bold bg-brand-gold/20 text-brand-navy dark:text-white px-2 py-0.5 rounded-full">
                 {getTasksByStatus('in_progress').length}
               </span>
@@ -266,16 +265,15 @@ export default function Tasks() {
                     <div className="flex justify-between items-center pt-3 border-t border-brand-navy/5 dark:border-white/10 mt-3 no-print">
                       <button
                         onClick={() => handleRevertStatus(task.id, task.status)}
-                        className="text-[9px] font-bold text-brand-navy/45 dark:text-white/45 hover:text-brand-navy dark:hover:text-white uppercase tracking-wider"
+                        className="text-[10px] font-bold text-brand-navy/45 dark:text-white/45 hover:text-brand-navy dark:hover:text-white uppercase tracking-wider cursor-pointer"
                       >
-                        Revert
+                        &larr; To Do
                       </button>
                       <button
                         onClick={() => handleAdvanceStatus(task.id, task.status)}
-                        className="text-[9px] font-extrabold text-brand-navy dark:text-white uppercase tracking-wider flex items-center gap-1 hover:text-brand-gold"
+                        className="text-[10px] font-extrabold text-green-600 dark:text-green-400 uppercase tracking-wider flex items-center gap-1 hover:underline cursor-pointer"
                       >
-                        Complete
-                        <ChevronRight size={13} />
+                        Mark Done &rarr;
                       </button>
                     </div>
                   </div>
@@ -287,10 +285,10 @@ export default function Tasks() {
             </div>
           </div>
 
-          {/* Column 3: Completed */}
+          {/* Column 3: Done */}
           <div className="bg-brand-beige dark:bg-brand-dark border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-5 shadow-sm space-y-4 min-h-[50vh]">
             <div className="flex items-center justify-between border-b border-brand-navy/5 dark:border-white/10 pb-3">
-              <span className="text-xs font-extrabold text-brand-navy dark:text-white uppercase tracking-wider">Completed Assignments</span>
+              <span className="text-xs font-extrabold text-brand-navy dark:text-white uppercase tracking-wider">Done</span>
               <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                 {getTasksByStatus('completed').length}
               </span>
@@ -298,7 +296,7 @@ export default function Tasks() {
 
             <div className="space-y-4">
               {getTasksByStatus('completed').map(task => (
-                <div key={task.id} className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden opacity-80">
+                <div key={task.id} className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden opacity-90">
                   <div className="absolute top-0 left-0 h-full w-[4px] bg-green-500" />
 
                   <div className="space-y-3 pl-2">
@@ -319,9 +317,9 @@ export default function Tasks() {
                     <div className="flex justify-start pt-3 border-t border-brand-navy/5 dark:border-white/10 mt-3 no-print">
                       <button
                         onClick={() => handleRevertStatus(task.id, task.status)}
-                        className="text-[9px] font-bold text-brand-navy/45 dark:text-white/45 hover:text-brand-navy dark:hover:text-white uppercase tracking-wider"
+                        className="text-[10px] font-bold text-brand-navy/45 dark:text-white/45 hover:text-brand-navy dark:hover:text-white uppercase tracking-wider cursor-pointer"
                       >
-                        Reopen Task
+                        Reopen to In Progress
                       </button>
                     </div>
                   </div>

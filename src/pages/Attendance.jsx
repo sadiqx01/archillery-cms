@@ -79,15 +79,22 @@ export default function Attendance() {
   const [overrideNotes, setOverrideNotes] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Clock In/Out state
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [clockActionLoading, setClockActionLoading] = useState(false);
+  const [todayAttendance, setTodayAttendance] = useState([]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [attRes, workerRes] = await Promise.all([
+      const [attRes, workerRes, todayRes] = await Promise.all([
         axios.get(`/api/attendance?date=${selectedDate}`),
-        (isAdmin || isSupervisor) ? axios.get('/api/workers') : Promise.resolve({ data: [] })
+        (isAdmin || isSupervisor) ? axios.get('/api/workers') : Promise.resolve({ data: [] }),
+        axios.get(`/api/attendance?date=${todayStr}`)
       ]);
       setAttendance(attRes.data);
       setWorkers(workerRes.data);
+      setTodayAttendance(todayRes.data || []);
     } catch (err) {
       console.error(err);
       alert('Failed to synchronize attendance sheets');
@@ -99,6 +106,35 @@ export default function Attendance() {
   useEffect(() => {
     fetchData();
   }, [selectedDate]);
+
+  // Check current user's attendance status today
+  const myRecordToday = todayAttendance.find(a => a.user_id === user?.id);
+
+  const handleClockIn = async () => {
+    setClockActionLoading(true);
+    try {
+      await axios.post('/api/attendance/check-in', {});
+      alert('Clocked in successfully for today!');
+      fetchData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Clock in failed');
+    } finally {
+      setClockActionLoading(false);
+    }
+  };
+
+  const handleClockOut = async () => {
+    setClockActionLoading(true);
+    try {
+      await axios.post('/api/attendance/check-out', {});
+      alert('Clocked out successfully for today!');
+      fetchData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Clock out failed');
+    } finally {
+      setClockActionLoading(false);
+    }
+  };
 
   const handleOpenOverrideModal = (record) => {
     setOverrideTarget(record);
@@ -175,6 +211,52 @@ export default function Attendance() {
             onChange={(e) => setSelectedDate(e.target.value)}
             className="px-4 py-2.5 rounded-xl border border-brand-navy/10 dark:border-white/10 focus:outline-none focus:border-brand-gold text-xs font-bold text-brand-navy dark:text-white dark:bg-brand-dark tracking-wider"
           />
+        </div>
+      </div>
+
+      {/* Quick Clock In & Clock Out Console */}
+      <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[24px] p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-brand-gold block">My Duty Status Today ({todayStr})</span>
+          <h3 className="font-bold text-sm text-brand-navy dark:text-white mt-0.5">
+            {myRecordToday ? (
+              myRecordToday.check_out_time ? (
+                <span className="text-green-600 dark:text-green-400">Shift Completed: Clocked In at {myRecordToday.check_in_time} • Clocked Out at {myRecordToday.check_out_time}</span>
+              ) : (
+                <span className="text-amber-600 dark:text-amber-400">Currently On Duty (Clocked In at {myRecordToday.check_in_time})</span>
+              )
+            ) : (
+              <span className="text-brand-navy/60 dark:text-white/60">Not Clocked In Today</span>
+            )}
+          </h3>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleClockIn}
+            disabled={clockActionLoading || !!myRecordToday}
+            className={`px-5 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center gap-2 cursor-pointer ${
+              myRecordToday 
+                ? 'bg-gray-100 dark:bg-white/5 text-gray-400 border border-gray-200 dark:border-white/10 cursor-not-allowed'
+                : 'bg-green-600 hover:bg-green-700 text-white shadow-green-600/20'
+            }`}
+          >
+            <Clock size={14} />
+            {myRecordToday ? `Clocked In (${myRecordToday.check_in_time})` : 'Clock In'}
+          </button>
+
+          <button
+            onClick={handleClockOut}
+            disabled={clockActionLoading || !myRecordToday || !!myRecordToday.check_out_time}
+            className={`px-5 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center gap-2 cursor-pointer ${
+              !myRecordToday || !!myRecordToday.check_out_time
+                ? 'bg-gray-100 dark:bg-white/5 text-gray-400 border border-gray-200 dark:border-white/10 cursor-not-allowed'
+                : 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/20'
+            }`}
+          >
+            <Clock size={14} />
+            {myRecordToday?.check_out_time ? `Clocked Out (${myRecordToday.check_out_time})` : 'Clock Out'}
+          </button>
         </div>
       </div>
 

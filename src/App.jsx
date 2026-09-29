@@ -151,6 +151,10 @@ function AppContent() {
 
             {/* Snagging Punch List defect tracker */}
             <Route 
+              path="/snags" 
+              element={<Navigate to="/projects/1/snags" replace />} 
+            />
+            <Route 
               path="/projects/:id/snags" 
               element={
                 <ProtectedRoute allowedRoles={['ceo', 'cto', 'it', 'supervisor', 'engineer', 'worker']}>

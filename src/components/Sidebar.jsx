@@ -10,16 +10,21 @@ import {
   FileSpreadsheet, 
   HardHat,
   ChevronRight,
+  ChevronDown,
   HelpCircle,
   ShoppingBag,
-  FileText
+  FileText,
+  AlertTriangle,
+  FolderPlus
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, toggleSidebar }) {
   const { user } = useAuth();
+  const [moreOpen, setMoreOpen] = React.useState(false);
   if (!user) return null;
 
-  const allLinks = [
+  // Primary core workflows (Simple, ordinary names)
+  const mainLinks = [
     { 
       name: 'Dashboard', 
       to: '/', 
@@ -31,12 +36,6 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
       to: '/projects', 
       icon: Briefcase, 
       roles: ['ceo', 'cto', 'it', 'supervisor', 'engineer'] 
-    },
-    { 
-      name: 'Staff Registry', 
-      to: '/workers', 
-      icon: Users, 
-      roles: ['ceo', 'hr', 'it'] 
     },
     { 
       name: 'Tasks', 
@@ -51,32 +50,49 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
       roles: ['ceo', 'hr', 'it', 'supervisor', 'engineer', 'worker'] 
     },
     { 
-      name: 'RFIs', 
-      to: '/rfis', 
-      icon: HelpCircle, 
-      roles: ['ceo', 'cto', 'supervisor', 'engineer'] 
-    },
-    { 
-      name: 'Procurement', 
+      name: 'Material Requests', 
       to: '/procurement', 
       icon: ShoppingBag, 
       roles: ['ceo', 'cto', 'it', 'supervisor', 'engineer'] 
     },
     { 
-      name: 'Daily Logs', 
+      name: 'Daily Updates', 
       to: '/daily-logs', 
       icon: FileText, 
       roles: ['ceo', 'cto', 'supervisor', 'engineer'] 
     },
+    { 
+      name: 'Staff', 
+      to: '/workers', 
+      icon: Users, 
+      roles: ['ceo', 'hr', 'it', 'supervisor'] 
+    },
+  ];
+
+  // Secondary advanced modules grouped under "More"
+  const secondaryLinks = [
     { 
       name: 'Reports', 
       to: '/reports', 
       icon: FileSpreadsheet, 
       roles: ['ceo', 'cto', 'hr', 'supervisor', 'engineer'] 
     },
+    { 
+      name: 'RFIs', 
+      to: '/rfis', 
+      icon: HelpCircle, 
+      roles: ['ceo', 'cto', 'supervisor', 'engineer'] 
+    },
+    { 
+      name: 'Defect Snags', 
+      to: '/snags', 
+      icon: AlertTriangle, 
+      roles: ['ceo', 'cto', 'engineer', 'supervisor'] 
+    },
   ];
 
-  const authorizedLinks = allLinks.filter(link => link.roles.includes(user.role));
+  const authorizedMain = mainLinks.filter(link => link.roles.includes(user.role));
+  const authorizedSecondary = secondaryLinks.filter(link => link.roles.includes(user.role));
 
   const roleLabels = {
     ceo: 'CEO / Executive',
@@ -134,8 +150,8 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
         </div>
 
         {/* Nav Links */}
-        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto relative z-10">
-          {authorizedLinks.map((link) => {
+        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto relative z-10">
+          {authorizedMain.map((link) => {
             const Icon = link.icon;
             return (
               <NavLink
@@ -145,7 +161,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
                   if (window.innerWidth < 1024) toggleSidebar();
                 }}
                 className={({ isActive }) =>
-                  `flex items-center justify-between px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all group relative overflow-hidden ${
+                  `flex items-center justify-between px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all group relative overflow-hidden ${
                     isActive
                       ? 'bg-brand-gold text-brand-dark shadow-lg shadow-brand-gold/5 font-extrabold'
                       : 'text-white/60 hover:bg-white/5 hover:text-white'
@@ -154,7 +170,6 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
               >
                 {({ isActive }) => (
                   <>
-                    {/* Active vertical border bar inside link card */}
                     {isActive && (
                       <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-brand-navy-light" />
                     )}
@@ -168,6 +183,52 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
               </NavLink>
             );
           })}
+
+          {/* Secondary "More" section */}
+          {authorizedSecondary.length > 0 && (
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setMoreOpen(!moreOpen)}
+                className="w-full flex items-center justify-between px-4 py-2 text-[10px] font-extrabold uppercase tracking-widest text-brand-gold/70 hover:text-brand-gold hover:bg-white/5 rounded-xl transition-all"
+              >
+                <span className="flex items-center gap-2">
+                  <FolderPlus size={14} />
+                  More Modules
+                </span>
+                <ChevronDown size={14} className={`transition-transform duration-200 ${moreOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {moreOpen && (
+                <div className="mt-1 pl-2 space-y-1 border-l border-white/10 ml-3">
+                  {authorizedSecondary.map((link) => {
+                    const Icon = link.icon;
+                    return (
+                      <NavLink
+                        key={link.name}
+                        to={link.to}
+                        onClick={() => {
+                          if (window.innerWidth < 1024) toggleSidebar();
+                        }}
+                        className={({ isActive }) =>
+                          `flex items-center justify-between px-3 py-2 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${
+                            isActive
+                              ? 'bg-brand-gold text-brand-dark font-extrabold'
+                              : 'text-white/50 hover:bg-white/5 hover:text-white'
+                          }`
+                        }
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Icon size={14} className="text-brand-gold" />
+                          <span>{link.name}</span>
+                        </div>
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </nav>
 
         {/* Sidebar Footer */}

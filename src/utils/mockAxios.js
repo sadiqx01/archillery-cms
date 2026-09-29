@@ -517,6 +517,11 @@ const mockAxios = {
       const timeNow = new Date().toTimeString().split(' ')[0];
       const status = timeNow > '08:30:00' ? 'late' : 'present';
       
+      const existingRecord = db.attendance.find(a => a.user_id === targetUserId && a.date === today);
+      if (existingRecord) {
+        return mockError('You have already clocked in for today.', 400);
+      }
+
       const newId = db.attendance.length ? Math.max(...db.attendance.map(a => a.id)) + 1 : 1;
       db.attendance.push({
         id: newId,
@@ -610,14 +615,31 @@ const mockAxios = {
     // 11. Create Material Requisition
     if (pathname === '/api/procurement/requisitions') {
       const newId = db.material_requisitions.length ? Math.max(...db.material_requisitions.map(r => r.id)) + 1 : 1;
+      const materialName = data.material || data.item_name || (data.item_details?.[0]?.item_desc) || 'Material';
+      const quantity = parseFloat(data.quantity) || (data.item_details?.[0]?.qty) || 1;
+      const unit = data.unit || (data.item_details?.[0]?.unit) || 'units';
+      const purpose = data.purpose || data.remarks || '';
+      const estimatedCost = parseFloat(data.estimated_cost) || (quantity * (parseFloat(data.rate) || 0)) || 0;
+
       const newReq = {
         id: newId,
         project_id: parseInt(data.project_id),
         requested_by: currentUser ? currentUser.id : 5,
         approved_by: null,
-        item_details: data.item_details, // expects array
-        estimated_cost: parseFloat(data.estimated_cost) || 0,
+        material: materialName,
+        quantity: quantity,
+        unit: unit,
+        purpose: purpose,
+        item_details: data.item_details || [{
+          item_desc: materialName,
+          qty: quantity,
+          unit: unit,
+          est_rate: parseFloat(data.rate) || 0
+        }],
+        estimated_cost: estimatedCost,
         status: 'pending_approval',
+        cto_comments: '',
+        ceo_comments: '',
         created_at: new Date()
       };
       db.material_requisitions.push(newReq);
@@ -700,13 +722,16 @@ const mockAxios = {
       const newDiary = {
         id: newId,
         project_id: parseInt(data.project_id),
-        logged_by: currentUser ? currentUser.id : 6,
-        log_date: data.log_date,
-        weather_am: data.weather_am,
-        weather_pm: data.weather_pm,
-        labor_details: data.labor_details, // expects object
-        equipment_details: data.equipment_details, // expects object
-        materials_received: data.materials_received || '',
+        logged_by: currentUser ? currentUser.id : 5,
+        log_date: data.log_date || new Date().toISOString().split('T')[0],
+        work_completed: data.work_completed || 'Site work executed',
+        materials_used: data.materials_used || data.materials_received || 'None',
+        issues: data.issues || 'No delays or constraints',
+        weather_am: data.weather_am || 'Clear, 28°C',
+        weather_pm: data.weather_pm || 'Clear, 32°C',
+        labor_details: data.labor_details || { 'Masons & Laborers': 12 },
+        equipment_details: data.equipment_details || { 'Excavator & Mixer': 8 },
+        materials_received: data.materials_used || data.materials_received || '',
         created_at: new Date()
       };
       db.daily_logs.push(newDiary);
