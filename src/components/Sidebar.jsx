@@ -23,7 +23,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
   const [moreOpen, setMoreOpen] = React.useState(false);
   if (!user) return null;
 
-  // Primary core workflows (Simple, ordinary names)
+  // Primary core workflows — strictly role-controlled
   const mainLinks = [
     { 
       name: 'Dashboard', 
@@ -35,37 +35,37 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
       name: 'Projects', 
       to: '/projects', 
       icon: Briefcase, 
-      roles: ['ceo', 'cto', 'it'] 
+      roles: ['ceo', 'cto', 'it']                    // Admin only: can create/edit
     },
     { 
       name: 'Tasks', 
       to: '/tasks', 
       icon: CheckSquare, 
-      roles: ['ceo', 'cto', 'it', 'supervisor', 'engineer', 'worker'] 
+      roles: ['ceo', 'cto', 'it', 'supervisor', 'engineer', 'worker']  // All site staff
     },
     { 
       name: 'Attendance', 
       to: '/attendance', 
       icon: CalendarRange, 
-      roles: ['ceo', 'hr', 'it', 'supervisor', 'engineer', 'worker'] 
+      roles: ['ceo', 'hr', 'it', 'supervisor', 'engineer', 'worker']   // All site staff + HR
     },
     { 
       name: 'Material Requests', 
       to: '/procurement', 
       icon: ShoppingBag, 
-      roles: ['ceo', 'cto', 'it', 'supervisor', 'engineer'] 
+      roles: ['ceo', 'cto', 'supervisor']             // Supervisor submits; CTO & CEO approve
     },
     { 
       name: 'Daily Updates', 
       to: '/daily-logs', 
       icon: FileText, 
-      roles: ['ceo', 'cto', 'supervisor', 'engineer'] 
+      roles: ['ceo', 'cto', 'supervisor', 'engineer'] // Site reporters only
     },
     { 
       name: 'Staff', 
       to: '/workers', 
       icon: Users, 
-      roles: ['ceo', 'hr', 'it'] 
+      roles: ['ceo', 'hr', 'it']                    // Admin / HR only
     },
   ];
 
