@@ -214,51 +214,67 @@ export default function Attendance() {
         </div>
       </div>
 
-      {/* Quick Clock In & Clock Out Console */}
-      <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[24px] p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-brand-gold block">My Duty Status Today ({todayStr})</span>
-          <h3 className="font-bold text-sm text-brand-navy dark:text-white mt-0.5">
-            {myRecordToday ? (
-              myRecordToday.check_out_time ? (
-                <span className="text-green-600 dark:text-green-400">Shift Completed: Clocked In at {myRecordToday.check_in_time} • Clocked Out at {myRecordToday.check_out_time}</span>
+      {/* Clock In / Clock Out Console — hidden for CEO */}
+      {user?.role !== 'ceo' ? (
+        <div className="bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[24px] p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-brand-gold block">My Duty Status Today ({todayStr})</span>
+            <h3 className="font-bold text-sm text-brand-navy dark:text-white mt-0.5">
+              {myRecordToday ? (
+                myRecordToday.check_out_time ? (
+                  <span className="text-green-600 dark:text-green-400">Shift Completed: In at {myRecordToday.check_in_time} · Out at {myRecordToday.check_out_time}</span>
+                ) : (
+                  <span className="text-amber-600 dark:text-amber-400">Currently On Duty — Clocked In at {myRecordToday.check_in_time}</span>
+                )
               ) : (
-                <span className="text-amber-600 dark:text-amber-400">Currently On Duty (Clocked In at {myRecordToday.check_in_time})</span>
-              )
-            ) : (
-              <span className="text-brand-navy/60 dark:text-white/60">Not Clocked In Today</span>
-            )}
-          </h3>
+                <span className="text-brand-navy/60 dark:text-white/60">Not Clocked In Today</span>
+              )}
+            </h3>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleClockIn}
+              disabled={clockActionLoading || !!myRecordToday}
+              className={`px-5 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center gap-2 cursor-pointer ${
+                myRecordToday
+                  ? 'bg-gray-100 dark:bg-white/5 text-gray-400 border border-gray-200 dark:border-white/10 cursor-not-allowed'
+                  : 'bg-green-600 hover:bg-green-700 text-white shadow-green-600/20'
+              }`}
+            >
+              <Clock size={14} />
+              {myRecordToday ? `Clocked In (${myRecordToday.check_in_time})` : 'Clock In'}
+            </button>
+            <button
+              onClick={handleClockOut}
+              disabled={clockActionLoading || !myRecordToday || !!myRecordToday.check_out_time}
+              className={`px-5 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center gap-2 cursor-pointer ${
+                !myRecordToday || !!myRecordToday.check_out_time
+                  ? 'bg-gray-100 dark:bg-white/5 text-gray-400 border border-gray-200 dark:border-white/10 cursor-not-allowed'
+                  : 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/20'
+              }`}
+            >
+              <Clock size={14} />
+              {myRecordToday?.check_out_time ? `Clocked Out (${myRecordToday.check_out_time})` : 'Clock Out'}
+            </button>
+          </div>
         </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleClockIn}
-            disabled={clockActionLoading || !!myRecordToday}
-            className={`px-5 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center gap-2 cursor-pointer ${
-              myRecordToday 
-                ? 'bg-gray-100 dark:bg-white/5 text-gray-400 border border-gray-200 dark:border-white/10 cursor-not-allowed'
-                : 'bg-green-600 hover:bg-green-700 text-white shadow-green-600/20'
-            }`}
-          >
-            <Clock size={14} />
-            {myRecordToday ? `Clocked In (${myRecordToday.check_in_time})` : 'Clock In'}
-          </button>
-
-          <button
-            onClick={handleClockOut}
-            disabled={clockActionLoading || !myRecordToday || !!myRecordToday.check_out_time}
-            className={`px-5 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center gap-2 cursor-pointer ${
-              !myRecordToday || !!myRecordToday.check_out_time
-                ? 'bg-gray-100 dark:bg-white/5 text-gray-400 border border-gray-200 dark:border-white/10 cursor-not-allowed'
-                : 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/20'
-            }`}
-          >
-            <Clock size={14} />
-            {myRecordToday?.check_out_time ? `Clocked Out (${myRecordToday.check_out_time})` : 'Clock Out'}
-          </button>
+      ) : (
+        /* CEO — read-only attendance summary banner */
+        <div className="bg-[#001026] border border-brand-gold/20 rounded-[24px] p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-brand-gold block">Attendance Overview — {todayStr}</span>
+            <h3 className="font-bold text-sm text-white mt-1">
+              {todayAttendance.length > 0
+                ? <span className="text-green-400">{todayAttendance.length} staff member{todayAttendance.length !== 1 ? 's' : ''} recorded on site today</span>
+                : <span className="text-white/50">No attendance records for today yet</span>}
+            </h3>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-brand-gold/10 border border-brand-gold/20 rounded-xl">
+            <FileCheck size={15} className="text-brand-gold" />
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-gold">View Only</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-16">

@@ -267,7 +267,8 @@ export default function Procurement() {
       {activeTab === 'requisitions' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           
-          {/* Left: Short Request Form (Supervisors, Engineers, IT, or CEO/CTO) */}
+          {/* Left: Short Request Form — hidden for CEO (CEO only approves) */}
+          {user?.role !== 'ceo' && (
           <div className="lg:col-span-1 bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm space-y-4 hover:shadow-md transition-all no-print">
             <div className="flex items-center gap-2 border-b border-brand-navy/5 dark:border-white/10 pb-3">
               <ShoppingBag className="text-brand-gold" size={18} />
@@ -350,9 +351,10 @@ export default function Procurement() {
               </button>
             </form>
           </div>
+          )} {/* end: hidden for CEO */}
 
-          {/* Right: Material Requests List */}
-          <div className="lg:col-span-2 bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm hover:shadow-md transition-all space-y-4">
+          {/* Right: Material Requests List — full width for CEO */}
+          <div className={`bg-white dark:bg-brand-surface border border-brand-navy/5 dark:border-white/10 rounded-[28px] p-6 shadow-sm hover:shadow-md transition-all space-y-4 ${user?.role === 'ceo' ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
             <div className="flex justify-between items-center border-b border-brand-navy/5 dark:border-white/10 pb-3">
               <h3 className="font-outfit font-extrabold text-sm text-brand-navy dark:text-white uppercase tracking-wider">
                 Submitted Requests & Approvals

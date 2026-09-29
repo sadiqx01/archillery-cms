@@ -84,7 +84,8 @@ export default function DailyLogs() {
     );
   }
 
-  const canPostLog = ['supervisor', 'engineer', 'ceo', 'cto', 'it'].includes(user?.role);
+  // CEO can only VIEW daily updates — not post them
+  const canPostLog = ['supervisor', 'engineer', 'cto'].includes(user?.role);
 
   return (
     <div className="space-y-6 animate-fadeIn pb-16">
