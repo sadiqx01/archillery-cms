@@ -35,7 +35,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
       name: 'Projects', 
       to: '/projects', 
       icon: Briefcase, 
-      roles: ['ceo', 'cto', 'it', 'supervisor', 'engineer'] 
+      roles: ['ceo', 'cto', 'it'] 
     },
     { 
       name: 'Tasks', 
@@ -65,7 +65,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
       name: 'Staff', 
       to: '/workers', 
       icon: Users, 
-      roles: ['ceo', 'hr', 'it', 'supervisor'] 
+      roles: ['ceo', 'hr', 'it'] 
     },
   ];
 
@@ -75,19 +75,19 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
       name: 'Reports', 
       to: '/reports', 
       icon: FileSpreadsheet, 
-      roles: ['ceo', 'cto', 'hr', 'supervisor', 'engineer'] 
+      roles: ['ceo', 'cto', 'hr', 'it'] 
     },
     { 
       name: 'RFIs', 
       to: '/rfis', 
       icon: HelpCircle, 
-      roles: ['ceo', 'cto', 'supervisor', 'engineer'] 
+      roles: ['ceo', 'cto', 'it'] 
     },
     { 
       name: 'Defect Snags', 
       to: '/snags', 
       icon: AlertTriangle, 
-      roles: ['ceo', 'cto', 'engineer', 'supervisor'] 
+      roles: ['ceo', 'cto', 'it'] 
     },
   ];
 

@@ -183,7 +183,7 @@ export default function Workers() {
     }
   };
 
-  const canManage = ['hr', 'it', 'ceo', 'supervisor'].includes(user?.role);
+  const canManage = ['hr', 'it', 'ceo'].includes(user?.role);
   const isHRorExec = ['hr', 'ceo'].includes(user?.role);
 
   return (
